@@ -14,13 +14,13 @@ APP_DIR = os.path.dirname(os.path.abspath(__file__))
 SHAPEFILE_PATH = os.path.join(APP_DIR, "Assets", "Polygons", "SHP", "climverse_Year1.shp") 
 LOGO_PATH = os.path.join(APP_DIR, "Assets", "Logo", "Tellus Logo.png")
 
-#App Logo
-logo_image = "D:/Website/Streamlit Projects/Climverse/Assets/Logo/Tellus Logo.png"
+#App Logo - Use the relative path
+logo_image = Image.open(LOGO_PATH)
 
 #Favicon on brower - MUST BE THE FIRST STREAMLIT COMMAND
 st.set_page_config(
     page_title="Climverse App",
-    page_icon=logo_image, # Use an emoji as the icon
+    page_icon=logo_image, # Use the PIL Image object
     layout="wide" # Use wide layout for better map visibility
 )
 
