@@ -4,4 +4,6 @@ geopandas
 folium
 streamlit-folium
 Pillow
+streamlit-shadcn-ui
+plotly
 
