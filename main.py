@@ -17,6 +17,41 @@ LOGO_PATH = os.path.join(APP_DIR, "Assets", "Logo", "Tellus Logo.png")
 #App Logo - Use the relative path
 logo_image = Image.open(LOGO_PATH)
 
+# ======================
+# CUSTOM CSS FOR MODERN LOOK
+# ======================
+st.markdown("""
+    <style>
+    /* Remove Streamlit default padding */
+    .block-container {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+    }
+    /* Title styling */
+    h1 {
+        font-weight: 700;
+        color: #2E86C1;
+    }
+    /* Card container */
+    .card {
+        background-color: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    }
+    /* Metric text */
+    .metric-label {
+        font-size: 0.9rem;
+        color: gray;
+    }
+    .metric-value {
+        font-size: 1.6rem;
+        font-weight: bold;
+        color: #2E4053;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 #Favicon on brower - MUST BE THE FIRST STREAMLIT COMMAND
 st.set_page_config(
     page_title="Climverse App",
@@ -26,7 +61,7 @@ st.set_page_config(
 
 st.logo(LOGO_PATH, link=None, icon_image=None)
 
-# --- SIDEBAR ---
+# ======================
 st.sidebar.title("Climverse App")
 st.sidebar.info(
     """
@@ -44,9 +79,13 @@ try:
     # Re-project to WGS84 (EPSG:4326) if not already, as it's the standard for web maps
     if gdf.crs.to_epsg() != 4326:
         gdf = gdf.to_crs(epsg=4326)
+    # --- Data Type Conversion ---
+    # Ensure numeric columns are treated as numbers for calculations and sorting
+    if 'Area_ha' in gdf.columns:
+        gdf['Area_ha'] = pd.to_numeric(gdf['Area_ha'], errors='coerce')
+
 except Exception as e:
-    st.error(f"Error loading shapefile: {e}")
-    st.error(f"Please ensure the shapefile and its sidecar files exist at: {SHAPEFILE_PATH}")
+    st.error(f"Error loading or processing shapefile: {e}")
     st.stop()
 
 # --- FILTERING WIDGETS ---
@@ -178,13 +217,28 @@ with map_col:
         )
 
 with dash_col1:
-    st.subheader("Selection Metrics")
-    st.metric(label="Selected Parcels", value=len(filtered_gdf))
-    if 'Area_ha' in filtered_gdf.columns:
-        st.metric(label="Total Area (ha)", value=f"{filtered_gdf['Area_ha'].sum():.2f}")
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.subheader("Showing on Map")
+    # Display the number of selected parcels
+    st.metric(label="Selected Parcels", value=f"{len(filtered_gdf)}")
+
+    # Display the sum of the area for the selected parcels
+    if 'Area_ha' in filtered_gdf.columns and not filtered_gdf.empty:
+        st.metric(label="Selected Area (ha)", value=f"{filtered_gdf['Area_ha'].sum():.2f}")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 with dash_col2:
+    # We wrap the "Project Metrics" in a div with our custom class
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.header("Project Metrics")
+    # Display total project area from the original unfiltered GeoDataFrame
+    if 'Area_ha' in gdf.columns:
+        st.metric(label="Total Project Area (ha)", value=f"{gdf['Area_ha'].sum():.2f}")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="block-container">', unsafe_allow_html=True)
     st.subheader("Area by Block")
     if 'Block' in filtered_gdf.columns and 'Area_ha' in filtered_gdf.columns and not filtered_gdf.empty:
         block_areas = filtered_gdf.groupby('Block')['Area_ha'].sum()
         st.bar_chart(block_areas)
+    st.markdown('</div>', unsafe_allow_html=True)
