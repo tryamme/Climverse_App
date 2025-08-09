@@ -7,14 +7,14 @@ from streamlit_folium import st_folium
 import os
 from PIL import Image
 
-#  Paths
+# Paths
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 SHAPEFILE_PATH = os.path.join(APP_DIR, "Assets", "Polygons", "SHP", "climverse_Year1.shp")
 LOGO_PATH = os.path.join(APP_DIR, "Assets", "Logo", "Tellus Logo.png")
 
 logo_image = Image.open(LOGO_PATH)
 
-#  Streamlit config
+# Streamlit config
 st.set_page_config(
     page_title="Climverse App",
     page_icon=logo_image,
@@ -26,7 +26,7 @@ st.sidebar.info("Demo to visualize project area with Streamlit, GeoPandas & Foli
 
 st.title("Project Area Visualization")
 
-#  Load data
+# Load data
 try:
     gdf = gpd.read_file(SHAPEFILE_PATH)
     if gdf.crs.to_epsg() != 4326:
@@ -37,7 +37,7 @@ except Exception as e:
     st.error(f"Error loading shapefile: {e}")
     st.stop()
 
-#  Filters
+# Filters
 st.write("Filter the data using the dropdowns below:")
 filtered_gdf = gdf.copy()
 filter_cols = st.columns(3)
@@ -75,7 +75,7 @@ with filter_cols[2]:
 
 st.info(f"Displaying **{len(filtered_gdf)}** of **{len(gdf)}** parcels based on your selection.")
 
-#  Map setup
+# Map setup
 if filtered_gdf.empty:
     st.warning("No data to display.")
     st.stop()
@@ -84,15 +84,28 @@ center = [filtered_gdf.unary_union.centroid.y, filtered_gdf.unary_union.centroid
 zoom = 14 if len(filtered_gdf) > 0 else 10
 
 m = folium.Map(location=center, zoom_start=zoom, tiles="CartoDB positron")
-folium.TileLayer(tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
-                 attr='Google', name='Google Satellite Hybrid', overlay=False, control=True).add_to(m)
-folium.GeoJson(filtered_gdf, style_function=lambda x: {
-    'fillColor': '#228B22', 'color': '#E6DB0C', 'weight': 2, 'fillOpacity': 0.2
-}).add_to(m)
+folium.TileLayer(
+    tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+    attr='Google',
+    name='Google Satellite Hybrid',
+    overlay=False,
+    control=True
+).add_to(m)
 
-#  Layout: Map + Dashboard
-map_col, dash_col1, dash_col2 = st.columns([2, 1, 1])
+folium.GeoJson(
+    filtered_gdf,
+    style_function=lambda x: {
+        'fillColor': '#228B22',
+        'color': '#E6DB0C',
+        'weight': 2,
+        'fillOpacity': 0.2
+    }
+).add_to(m)
 
+# Layout: Map + Dashboard (combine old col2 and col3 into tabs)
+map_col, dash_col1, dash_tabs_col = st.columns([2, 1, 1.5])
+
+# Map Column
 with map_col:
     st_folium(m, use_container_width=True, height=500)
     with st.expander("View Selected Data", expanded=False):
@@ -105,35 +118,35 @@ with map_col:
             "Area_ha": st.column_config.NumberColumn("Area (ha)", format="%.2f")
         })
 
-# — Left metrics card
-
+# Left Dashboard Column
 with dash_col1:
-    # Card for "Showing on Map"
     with ui.card(key="showing_on_map_card"):
-        ui.element("h1", children=["Filter Selection showing on Map"])
-    
-    # Card for "Selected Parcels"
-    # This card is now a separate component
-        with ui.card(key="selected_parcels_card"):
-            ui.element("h2", children=f"No of Selected Parcels - {len(filtered_gdf)}")
-           
+        ui.element("h3", children=["Filter Selection Showing on Map"])
         
-        # Card for "Selected Area (ha)"
-        # This card is also a separate component
+        # Inside the main card, two sub-cards
+        with ui.card(key="selected_parcels_card"):
+            ui.element("p", children=f"No of Selected Parcels: {len(filtered_gdf)}")
+        
         with ui.card(key="selected_area_card"):
-            ui.element("h2", children=f"Selected Area (ha) - {filtered_gdf['Area_ha'].sum():.2f}")
-           
+            ui.element("p", children=f"Selected Area (ha): {filtered_gdf['Area_ha'].sum():.2f}")
 
-                
-# — Right dashboard cards
-with dash_col2:
-    with ui.card(key="project_metrics"):
-        ui.element("h2", children=["Project Metrics"])
-        if 'Area_ha' in gdf.columns:
-            ui.metric_card(title="Total Approved Project Area (ha)", content=f"{gdf['Area_ha'].sum():.2f}")
+# Combined Column (Tabs for former col2 & col3 content)
+with dash_tabs_col:
+    tab1, tab2 = st.tabs(["Project Metrics", "Area by GP"])
 
-    with ui.card(key="GP_area_card"):
-        ui.element("h4", children=["Area by GP"])
-        if 'Block' in filtered_gdf.columns and not filtered_gdf.empty:
-            block_areas = filtered_gdf.groupby('GP_Name')['Area_ha'].sum()
-            st.bar_chart(block_areas)
+    with tab1:
+        with ui.card(key="project_metrics"):
+            ui.element("h4", children=["Project Metrics"])
+            if 'Area_ha' in gdf.columns:
+                ui.metric_card(
+                    title="Total Approved Project Area (ha)",
+                    content=f"{gdf['Area_ha'].sum():.2f}"
+                )
+
+    with tab2:
+        with ui.card(key="GP_area_card"):
+            ui.element("h4", children=["Area by GP"])
+            if 'GP_Name' in filtered_gdf.columns and not filtered_gdf.empty:
+                gp_areas = filtered_gdf.groupby('GP_Name')['Area_ha'].sum()
+                st.bar_chart(gp_areas)
+
