@@ -6,4 +6,4 @@ streamlit-folium
 Pillow
 streamlit-shadcn-ui
 plotly
-
+matplotlib
